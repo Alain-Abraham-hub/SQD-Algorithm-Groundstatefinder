@@ -8,7 +8,7 @@ from typing import Any, Dict, Tuple
 import numpy as np
 
 try:
-	from pyscf import ao2mo, gto, mcscf, scf
+	from pyscf import ao2mo, gto, scf
 except ImportError as exc:  # pragma: no cover - handled by runtime env
 	raise ImportError(
 		"PySCF is required to build the N2 fermionic operator. "
@@ -99,7 +99,7 @@ def build_n2_fermionic_operator(
 	unit: str = "Angstrom",
 	symmetry: bool | str = "Dooh",
 ) -> "FermionOperator":
-	"""Build a FermionOperator for N2 using CASCI integrals.
+	"""Build a FermionOperator for N2 using HF integrals.
 
 	Args:
 		bond_length: N–N bond length.
@@ -139,13 +139,10 @@ def build_n2_fermionic_operator(
 	mf = scf.RHF(mol) if spin == 0 else scf.ROHF(mol)
 	mf.kernel()
 
-	mc = mcscf.CASCI(mf, n_active_orbitals, n_active_electrons)
-
-	h1eff = mc.get_h1eff()
-	if isinstance(h1eff, tuple):
-		h1eff = h1eff[0]
-
-	h2eff = mc.get_h2eff()
+	mo_coeff = mf.mo_coeff
+	hcore_ao = mf.get_hcore()
+	h1eff = mo_coeff.T @ hcore_ao @ mo_coeff
+	h2eff = ao2mo.kernel(mol, mo_coeff)
 
 	h1eff = np.asarray(h1eff)
 	h2eff = np.asarray(h2eff)
