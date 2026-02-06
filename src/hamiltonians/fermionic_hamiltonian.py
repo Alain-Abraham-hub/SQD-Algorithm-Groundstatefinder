@@ -16,7 +16,7 @@ except ImportError as exc:  # pragma: no cover - handled by runtime env
 	) from exc
 
 try:
-	from openfermion.ops import InteractionOperator
+	from openfermion.ops import FermionOperator, InteractionOperator
 	from openfermion.transforms import get_fermion_operator
 except ImportError as exc:  # pragma: no cover - handled by runtime env
 	raise ImportError(
