@@ -5,7 +5,10 @@ import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 
-from src.ansatz.LUCJ_ansatz import build_ucj_circuit
+try:
+    from .LUCJ_ansatz import build_ucj_circuit
+except ImportError:  # Fallback for running as a standalone script
+    from src.ansatz.LUCJ_ansatz import build_ucj_circuit
 
 print("Building UCJ ansatz circuit for N2...")
 circuit, _ = build_ucj_circuit(build_hamiltonian=False)
