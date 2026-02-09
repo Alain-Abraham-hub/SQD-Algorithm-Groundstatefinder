@@ -28,7 +28,7 @@ def get_ccsd_amplitudes(
 
     The t1 amplitudes correspond to single excitation operators and t2 amplitudes
     correspond to double excitation operators. These can be used as initial
-    parameters for quantum ansatze like UCCSD.
+    parameters for quantum ansatze like LUCJ.
 
     Args:
         bond_length: N–N bond length.
