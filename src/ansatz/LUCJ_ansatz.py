@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+from typing import TYPE_CHECKING
 
 try:
     import ffsim
@@ -24,6 +25,9 @@ from ..hamiltonians.fermionic_hamiltonian import build_n2_fermionic_operator
 from ..hamiltonians.qubit_hamiltonian import map_to_qubit_operator
 from .initial_parameters import get_ccsd_amplitudes
 
+if TYPE_CHECKING:
+    from openfermion.ops import QubitOperator
+
 
 def build_ucj_circuit(
     *,
@@ -35,7 +39,7 @@ def build_ucj_circuit(
     active_space: tuple[int, int] = (10, 8),
     unit: str = "Angstrom",
     symmetry: bool | str = "Dooh",
-) -> tuple[QuantumCircuit, "QubitOperator"]:
+) -> tuple[QuantumCircuit, QubitOperator]:
     """Build a UCJ ansatz quantum circuit for N2 molecule.
 
     Args:
@@ -89,10 +93,15 @@ def build_ucj_circuit(
     circuit = QuantumCircuit(qubits)
 
     # Prepare Hartree-Fock state as the reference state
-    circuit.append(ffsim.qiskit.PrepareHartreeFockJW(num_orbitals, nelec), qubits)
+    prep_gate = ffsim.qiskit.PrepareHartreeFockJW(num_orbitals, nelec)
+    circuit.append(prep_gate, qubits)
 
     # Apply the UCJ operator to the reference state
-    circuit.append(ffsim.qiskit.UCJOpSpinBalancedJW(ucj_op), qubits)
+    ucj_gate = ffsim.qiskit.UCJOpSpinBalancedJW(ucj_op)
+    circuit.append(ucj_gate, qubits)
+
+    # Optimize circuit by merging adjacent blocks
+    circuit = ffsim.qiskit.PRE_INIT.optimize(circuit)
 
     # Add measurements
     circuit.measure_all()
