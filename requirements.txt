@@ -35,3 +35,4 @@ urllib3>=2.2
 qiskit
 ffsim
 qiskit-ibm-runtime
+qiskit-addon-sqd

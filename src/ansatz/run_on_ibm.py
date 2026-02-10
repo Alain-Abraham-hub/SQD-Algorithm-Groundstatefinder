@@ -8,6 +8,7 @@ This script expects credentials in env vars:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 from typing import Iterable
 
@@ -153,6 +154,7 @@ def main() -> None:
     parser.add_argument("--backend", type=str, default="")
     parser.add_argument("--plot-file", type=str, default="bitstring_frequencies.png")
     parser.add_argument("--max-bars", type=int, default=30)
+    parser.add_argument("--counts-file", type=str, default="ibm_counts.json")
     args = parser.parse_args()
 
     token = os.getenv("QISKIT_IBM_TOKEN")
@@ -200,6 +202,19 @@ def main() -> None:
     if counts is None:
         print("No measurement data found in sampler result.")
         return
+
+    with open(args.counts_file, "w") as handle:
+        json.dump(
+            {
+                "num_qubits": circuit.num_qubits,
+                "shots": args.shots,
+                "counts": counts,
+            },
+            handle,
+            indent=2,
+            sort_keys=True,
+        )
+    print(f"Counts saved to '{args.counts_file}'")
 
     _plot_counts(counts, args.max_bars, args.plot_file)
 
