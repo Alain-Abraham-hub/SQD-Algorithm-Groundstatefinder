@@ -30,6 +30,10 @@ except ImportError as exc:
 
 from .LUCJ_ansatz import build_ucj_circuit
 
+# Optional local override. Leave empty and use env vars instead.
+API_TOKEN = ""
+API_INSTANCE = ""
+
 
 def _select_least_busy_backend(
     backends: Iterable,
@@ -149,19 +153,21 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run the UCJ circuit on IBM Quantum hardware with SamplerV2."
     )
-    parser.add_argument("--shots", type=int, default=10_000)
+    parser.add_argument("--shots", type=int, default=100_000)
     parser.add_argument("--opt-level", type=int, default=1)
     parser.add_argument("--backend", type=str, default="")
     parser.add_argument("--plot-file", type=str, default="bitstring_frequencies.png")
     parser.add_argument("--max-bars", type=int, default=30)
     parser.add_argument("--counts-file", type=str, default="ibm_counts.json")
+    parser.add_argument("--token", type=str, default="")
+    parser.add_argument("--instance", type=str, default="")
     args = parser.parse_args()
 
-    token = os.getenv("QISKIT_IBM_TOKEN")
+    token = args.token or API_TOKEN or os.getenv("QISKIT_IBM_TOKEN")
     if not token:
         raise RuntimeError("Set QISKIT_IBM_TOKEN in your environment.")
 
-    instance = os.getenv("QISKIT_IBM_INSTANCE")
+    instance = args.instance or API_INSTANCE or os.getenv("QISKIT_IBM_INSTANCE")
     service = QiskitRuntimeService(
         channel="ibm_quantum_platform",
         token=token,
