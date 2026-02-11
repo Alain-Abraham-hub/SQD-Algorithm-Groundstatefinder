@@ -21,8 +21,7 @@ except ImportError as exc:
         "Install it with `pip install qiskit`."
     ) from exc
 
-from ..hamiltonians.fermionic_hamiltonian import build_n2_fermionic_operator
-from ..hamiltonians.qubit_hamiltonian import map_to_qubit_operator
+from ..hamiltonians.qubit_hamiltonian import build_qubit_hamiltonian
 from .initial_parameters import get_ccsd_amplitudes
 
 if TYPE_CHECKING:
@@ -39,7 +38,8 @@ def build_ucj_circuit(
     active_space: tuple[int, int] = (10, 8),
     unit: str = "Angstrom",
     symmetry: bool | str = "Dooh",
-) -> tuple[QuantumCircuit, QubitOperator]:
+    build_hamiltonian: bool = True,
+) -> tuple[QuantumCircuit, QubitOperator | None]:
     """Build a UCJ ansatz quantum circuit for N2 molecule.
 
     Args:
@@ -51,11 +51,12 @@ def build_ucj_circuit(
         active_space: (n_active_electrons, n_active_orbitals).
         unit: Distance unit for geometry.
         symmetry: Symmetry group.
+        build_hamiltonian: If False, skip Hamiltonian building (faster, for visualization only).
 
     Returns:
         Tuple of (quantum_circuit, qubit_hamiltonian) where:
             - quantum_circuit: Qiskit circuit with UCJ ansatz
-            - qubit_hamiltonian: QubitOperator for energy measurements
+            - qubit_hamiltonian: QubitOperator for energy measurements (None if build_hamiltonian=False)
     """
     n_active_electrons, num_orbitals = active_space
 
@@ -65,6 +66,7 @@ def build_ucj_circuit(
         basis=basis,
         charge=charge,
         spin=spin,
+        active_space=active_space,
         unit=unit,
         symmetry=symmetry,
     )
@@ -101,35 +103,118 @@ def build_ucj_circuit(
     circuit.append(ucj_gate, qubits)
 
     # Optimize circuit by merging adjacent blocks
-    circuit = ffsim.qiskit.PRE_INIT.optimize(circuit)
+    circuit = ffsim.qiskit.PRE_INIT.run(circuit)
 
     # Add measurements
     circuit.measure_all()
 
-    # Build the qubit Hamiltonian
-    fermion_op = build_n2_fermionic_operator(
-        bond_length=bond_length,
-        basis=basis,
-        charge=charge,
-        spin=spin,
-        active_space=active_space,
-        unit=unit,
-        symmetry=symmetry,
-    )
-    qubit_hamiltonian = map_to_qubit_operator(fermion_op)
+    # Build the qubit Hamiltonian (can be slow for large systems)
+    qubit_hamiltonian = None
+    if build_hamiltonian:
+        qubit_hamiltonian = build_qubit_hamiltonian(
+            bond_length=bond_length,
+            basis=basis,
+            charge=charge,
+            spin=spin,
+            active_space=active_space,
+            unit=unit,
+            symmetry=symmetry,
+        )
 
     return circuit, qubit_hamiltonian
 
 
+def draw_circuit(
+    circuit: QuantumCircuit,
+    output: str = "mpl",
+    filename: str = "circuit.png",
+    decompose: bool = True,
+    fold: int = 20,
+    scale: float = 0.7,
+) -> None:
+    """Draw the quantum circuit in various formats.
+
+    Args:
+        circuit: Qiskit QuantumCircuit to visualize.
+        output: Output format:
+            - "mpl": matplotlib image (recommended, saves to file)
+            - "text": ASCII art in terminal
+            - "latex": LaTeX source code
+        filename: Output filename (for "mpl" or "latex" modes).
+        decompose: Whether to decompose gates to primitive operations.
+        fold: Wrap circuit diagram at this many columns (-1 for no folding).
+        scale: Scale factor for matplotlib drawings.
+    """
+    circuit_to_draw = circuit.decompose() if decompose else circuit
+    
+    if output == "text":
+        print("\n" + "="*70)
+        print("CIRCUIT (ASCII)")
+        print("="*70)
+        print(circuit_to_draw.draw(output='text', fold=fold))
+        
+    elif output == "mpl":
+        try:
+            import matplotlib.pyplot as plt
+            import matplotlib
+            matplotlib.use('Agg')  # Use non-interactive backend
+            import sys
+            import io
+            
+            # Suppress text output from draw()
+            old_stdout = sys.stdout
+            sys.stdout = io.StringIO()
+            
+            try:
+                fig = circuit_to_draw.draw(
+                    output="mpl",
+                    scale=scale,
+                    fold=fold,
+                    style={'backgroundcolor': '#EEEEEE'}
+                )
+            finally:
+                sys.stdout = old_stdout
+            
+            if filename:
+                fig.savefig(filename, dpi=300, bbox_inches="tight", facecolor='white')
+                print(f"✓ Circuit visualization saved to '{filename}'")
+                print(f"  Open the file to view the circuit diagram.")
+            plt.close(fig)
+        except ImportError:
+            print("⚠ Matplotlib not installed. Install with: pip install matplotlib")
+            print("  Falling back to text mode...")
+            draw_circuit(circuit, output="text", fold=fold)
+            
+    elif output == "latex":
+        try:
+            latex_source = circuit_to_draw.draw(output='latex_source')
+            if filename:
+                with open(filename, 'w') as f:
+                    f.write(latex_source)
+                print(f"✓ LaTeX source saved to '{filename}'")
+                print(f"  Compile with pdflatex or use in your LaTeX document")
+            else:
+                print(latex_source)
+        except Exception as e:
+            print(f"⚠ Error generating LaTeX: {e}")
+    
+    else:
+        print(f"⚠ Unknown output format '{output}'. Use 'text', 'mpl', or 'latex'.")
+
+
 if __name__ == "__main__":
-    # Build the UCJ circuit and Hamiltonian for N2
+    # Build the UCJ circuit (skip Hamiltonian for faster visualization)
     print("Building UCJ ansatz circuit for N2...")
-    circuit, hamiltonian = build_ucj_circuit()
+    circuit, hamiltonian = build_ucj_circuit(build_hamiltonian=False)
 
     print(f"\nCircuit depth: {circuit.depth()}")
     print(f"Number of qubits: {circuit.num_qubits}")
     print(f"Number of operations: {len(circuit)}")
-    print(f"\nHamiltonian terms: {len(hamiltonian.terms)}")
     
-    # Optionally visualize circuit (uncomment to use)
-    # circuit.decompose().draw("mpl", scale=0.5, fold=-1)
+    # Draw and save the circuit as an image (recommended)
+    print("\nGenerating circuit visualization...")
+    draw_circuit(circuit, output="mpl", filename="n2_ucj_circuit.png", fold=20, scale=0.8)
+    
+    # To also build the Hamiltonian (slow), use:
+    # circuit, hamiltonian = build_ucj_circuit(build_hamiltonian=True)
+    # print(f"\nHamiltonian terms: {len(hamiltonian.terms)}")

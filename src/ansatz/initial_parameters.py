@@ -21,6 +21,7 @@ def get_ccsd_amplitudes(
     basis: str = "6-31g",
     charge: int = 0,
     spin: int = 0,
+    active_space: Tuple[int, int] | None = None,
     unit: str = "Angstrom",
     symmetry: bool | str = "Dooh",
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -35,6 +36,7 @@ def get_ccsd_amplitudes(
         basis: Basis set (default 6-31G).
         charge: Total molecular charge.
         spin: 2 * S (0 for singlet).
+        active_space: (n_active_electrons, n_active_orbitals). If None, uses all.
         unit: Distance unit for geometry.
         symmetry: Symmetry group (default "Dooh").
 
@@ -71,6 +73,16 @@ def get_ccsd_amplitudes(
     # Extract amplitudes
     t1 = mycc.t1
     t2 = mycc.t2
+
+    # Restrict to active space if specified
+    if active_space is not None:
+        n_active_electrons, n_active_orbitals = active_space
+        n_occ = n_active_electrons // 2  # For closed-shell
+        n_virt = n_active_orbitals - n_occ
+        
+        # Extract active orbital block
+        t1 = t1[:n_occ, :n_virt]
+        t2 = t2[:n_occ, :n_occ, :n_virt, :n_virt]
 
     return t1, t2
 
