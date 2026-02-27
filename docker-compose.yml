@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  sqd-groundstatefinder:
+    image: alain1435/sqd-groundstatefinder:latest
+    container_name: sqd-groundstatefinder
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python
+    stdin_open: true
+    tty: true
+
+  # Jupyter notebook service for interactive development
+  jupyter:
+    image: alain1435/sqd-groundstatefinder:latest
+    container_name: sqd-jupyter
+    working_dir: /app
+    ports:
+      - "8888:8888"
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: jupyter notebook --ip=0.0.0.0 --no-browser --allow-root
+    depends_on:
+      - sqd-groundstatefinder
