@@ -10,22 +10,99 @@ A quantum framework for finding molecular ground states using the **LUCJ ansatz*
 - PySCF for ab-initio electronic structure
 - Modular architecture (Hamiltonians, Ansatz, Measurement)
 
-## Installation
+## Quick Start
+
+Docker is the primary way to run this project.
+
+### Option 1: Use the pre-built image
 
 ```bash
-# Clone and install
+docker pull alain1435/sqd-groundstatefinder:latest
+```
+
+Run a Python command inside the container:
+
+```bash
+docker run --rm -it \
+	-v "$(pwd)":/app \
+	alain1435/sqd-groundstatefinder:latest \
+	python
+```
+
+### Option 2: Use Docker Compose
+
+```bash
+docker compose run --rm sqd-groundstatefinder
+```
+
+Start the notebook service:
+
+```bash
+docker compose up jupyter
+```
+
+### Option 3: Build locally
+
+```bash
+git clone <repository-url>
+cd SQD-Algorithm-Groundstatefinder
+docker build -t sqd-groundstatefinder .
+docker run --rm -it -v "$(pwd)":/app sqd-groundstatefinder python
+```
+
+## Local Python Installation
+
+If you do not want to use Docker:
+
+```bash
 git clone <repository-url>
 cd SQD-Algorithm-Groundstatefinder
 pip install -r requirements.txt
+```
 
-# Optional: Configure IBM Quantum
+## Configuration
+
+For IBM Quantum execution, provide these environment variables:
+
+```bash
 export QISKIT_IBM_TOKEN="your_token"
 export QISKIT_IBM_INSTANCE="ibm-q/open/main"
 ```
 
+With Docker:
+
+```bash
+docker run --rm \
+	-v "$(pwd)":/app \
+	-e QISKIT_IBM_TOKEN="your_token" \
+	-e QISKIT_IBM_INSTANCE="ibm-q/open/main" \
+	alain1435/sqd-groundstatefinder:latest \
+	python your_script.py
+```
+
 ## Usage
 
-Build circuit and run on quantum hardware:
+### Run a script with Docker
+
+```bash
+docker run --rm \
+	-v "$(pwd)":/app \
+	alain1435/sqd-groundstatefinder:latest \
+	python visualize_circuit.py
+```
+
+### Run the notebook server
+
+```bash
+docker compose up jupyter
+```
+
+Then open `http://localhost:8888` in your browser.
+
+### Python API example
+
+Build a circuit and run on quantum hardware:
+
 ```python
 from src.ansatz.LUCJ_ansatz import build_ucj_circuit
 from src.ansatz.run_on_ibm import run_ansatz_on_ibm
@@ -34,7 +111,8 @@ circuit, hamiltonian = build_ucj_circuit(bond_length=1.0977, n_reps=2)
 counts = run_ansatz_on_ibm(circuit, shots=1024)
 ```
 
-Recover ground state using SQD:
+Recover the ground state using SQD:
+
 ```python
 from src.measure.subspace_hamiltonian import run_sqd_from_counts
 
@@ -46,16 +124,20 @@ print(f"Ground state energy: {energies[-1]:.6f}")
 
 ```
 SQD-Algorithm-Groundstatefinder/
+├── Dockerfile
+├── docker-compose.yml
+├── DOCKER.md
 ├── README.md
 ├── LICENSE
 ├── requirements.txt
 ├── notebooks/
 │   └── intro.ipynb              # Tutorial and examples
 ├── src/
-│   ├── __init__.py
+│   ├── __init.py__
 │   ├── hamiltonians/
 │   │   ├── fermionic_hamiltonian.py    # Build H from ab-initio
-│   │   └── qubit_hamiltonian.py        # Transform to qubits
+│   │   ├── qubit_hamiltonian.py        # Transform to qubits
+│   │   └── qubitmapping.py             # Qubit mapping helpers
 │   ├── ansatz/
 │   │   ├── LUCJ_ansatz.py              # Circuit design
 │   │   ├── initial_parameters.py       # CCSD initialization
@@ -65,6 +147,12 @@ SQD-Algorithm-Groundstatefinder/
 │       └── subspace_hamiltonian.py     # SQD algorithm
 └── ibm_counts.json              # Sample measurement results
 ```
+
+## Docker Files
+
+- `Dockerfile`: container image definition with scientific Python dependencies
+- `docker-compose.yml`: interactive Python and Jupyter services
+- `DOCKER.md`: detailed Docker usage and troubleshooting guide
 
 ## Algorithm Overview
 
@@ -88,6 +176,8 @@ SQD-Algorithm-Groundstatefinder/
 ## Tutorial
 
 See [notebooks/intro.ipynb](notebooks/intro.ipynb) for detailed examples and tutorials.
+
+For container-specific usage details, see [DOCKER.md](DOCKER.md).
 
 ## References
 
